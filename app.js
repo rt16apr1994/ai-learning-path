@@ -1,3 +1,9 @@
+// Load the key from storage on page load
+window.onload = () => {
+    const savedKey = localStorage.getItem('gemini_api_key');
+    if (savedKey) document.getElementById('apiKey').value = savedKey;
+};
+
 async function generatePath() {
     const key = document.getElementById('apiKey').value;
     const lang = document.getElementById('language').value;
@@ -5,12 +11,20 @@ async function generatePath() {
     const topic = document.getElementById('topic').value;
     const output = document.getElementById('output');
 
-    output.innerHTML = "Generating your personalized path...";
+    if (!key) {
+        alert("Please enter an API Key first!");
+        return;
+    }
 
-    const prompt = `Create a 5-step learning path for ${topic} in the field of ${subject}. 
+    // Save the key for next time so the user doesn't have to re-type it
+    localStorage.setItem('gemini_api_key', key);
+
+    output.innerHTML = "<div class='animate-pulse'>Generating your personalized path...</div>";
+
+    const prompt = `Act as an expert tutor. Create a detailed learning path for ${topic} in ${subject}. 
                    Language: ${lang}. 
-                   Include resources and a mini-quiz for each step. 
-                   Format the output in clear Markdown.`;
+                   Structure: 1. Overview, 2. Prerequisites, 3. Step-by-step concepts, 4. Practice project. 
+                   Format as clean Markdown.`;
 
     try {
         const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${key}`, {
@@ -20,11 +34,14 @@ async function generatePath() {
         });
 
         const data = await response.json();
+        
+        if (data.error) throw new Error(data.error.message);
+
         const content = data.candidates[0].content.parts[0].text;
         
-        // Simple Markdown-to-HTML (Using a library like 'marked' is better for production)
-        output.innerHTML = content.replace(/\n/g, '<br>');
+        // Simple Markdown conversion for display
+        output.innerHTML = content.replace(/\n/g, '<br>').replace(/###/g, '<h3 class="font-bold">');
     } catch (error) {
-        output.innerHTML = "Error: " + error.message;
+        output.innerHTML = `<div class="text-red-500 font-bold">Error: ${error.message}</div>`;
     }
 }
